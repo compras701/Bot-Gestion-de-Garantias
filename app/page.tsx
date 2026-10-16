@@ -1,89 +1,13 @@
 
-"use client";
+import { auth, signIn } from "../auth";
+import { redirect } from "next/navigation";
 
-import { useEffect, useState } from "react";
+export default async function Home() {
+  const session = await auth();
 
-export default function Home() {
-  const [usuario, setUsuario] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [cargando, setCargando] = useState(false);
-  const [verificando, setVerificando] = useState(true);
-
-  useEffect(() => {
-    async function verificarSesion() {
-      try {
-        const res = await fetch("/api/session", {
-          cache: "no-store",
-        });
-
-        if (res.ok) {
-          window.location.replace("/chat");
-          return;
-        }
-      } catch {
-        // Mostrar el formulario si no se puede verificar.
-      }
-
-      setVerificando(false);
-    }
-
-    verificarSesion();
-  }, []);
-
-  async function iniciarSesion(e: React.FormEvent) {
-    e.preventDefault();
-
-    setError("");
-    setCargando(true);
-
-    try {
-      const respuesta = await fetch("/api/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          usuario,
-          password,
-        }),
-      });
-
-      if (respuesta.ok) {
-        window.location.replace("/chat");
-        return;
-      }
-
-      if (respuesta.status === 401) {
-        setError(
-          "Usuario o contraseña incorrectos. Volvé a intentarlo."
-        );
-      } else if (respuesta.status === 429) {
-        setError(
-          "Demasiados intentos. Esperá unos minutos."
-        );
-      } else {
-        setError(
-          "No pudimos iniciar sesión. Intentá nuevamente."
-        );
-      }
-
-      setPassword("");
-    } catch {
-      setError(
-        "No se pudo conectar con el servidor. Intentá nuevamente."
-      );
-    } finally {
-      setCargando(false);
-    }
-  }
-
-  if (verificando) {
-    return (
-      <main style={styles.container}>
-        <p>Verificando acceso...</p>
-      </main>
-    );
+  // Si ya inició sesión, ingresar directamente al chat.
+  if (session?.user?.email) {
+    redirect("/chat");
   }
 
   return (
@@ -96,55 +20,32 @@ export default function Home() {
         </h1>
 
         <p style={styles.subtitle}>
-          Ingresá tus credenciales para acceder al
-          asistente interno de Gestión de Garantías.
+          Bienvenido al asistente interno de
+          Gestión de Garantías ICOM.
         </p>
 
-        <form onSubmit={iniciarSesion}>
-          <label htmlFor="usuario" style={styles.label}>
-            Usuario
-          </label>
+        <p style={styles.description}>
+          Para continuar, ingresá con tu cuenta
+          corporativa de Google Workspace.
+        </p>
 
-          <input
-            id="usuario"
-            type="text"
-            autoComplete="username"
-            value={usuario}
-            onChange={(e) => setUsuario(e.target.value)}
-            placeholder="Ingresá tu usuario"
-            required
-            style={styles.input}
-          />
-
-          <label htmlFor="password" style={styles.label}>
-            Contraseña
-          </label>
-
-          <input
-            id="password"
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Ingresá tu contraseña"
-            required
-            style={styles.input}
-          />
-
-          {error && (
-            <div role="alert" style={styles.error}>
-              {error}
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={cargando}
-            style={styles.button}
-          >
-            {cargando ? "Verificando..." : "Ingresar"}
+        <form
+          action={async () => {
+            "use server";
+            await signIn("google", {
+              redirectTo: "/chat",
+            });
+          }}
+        >
+          <button type="submit" style={styles.button}>
+            Continuar con Google
           </button>
         </form>
+
+        <p style={styles.note}>
+          Acceso exclusivo para usuarios
+          @icomsalud.com.ar
+        </p>
 
         <p style={styles.footer}>
           ICOM Salud - Gestión de Garantías
@@ -162,71 +63,58 @@ const styles: Record<string, React.CSSProperties> = {
     minHeight: "100vh",
     padding: "20px",
     boxSizing: "border-box",
+    backgroundColor: "#f5f7fb",
   },
   card: {
     width: "100%",
-    maxWidth: "410px",
-    padding: "36px",
+    maxWidth: "420px",
+    padding: "38px",
     boxSizing: "border-box",
-    background: "#ffffff",
+    backgroundColor: "#ffffff",
     borderRadius: "16px",
     boxShadow: "0 10px 35px rgba(0,0,0,0.08)",
+    textAlign: "center",
   },
   logo: {
-    textAlign: "center",
-    fontSize: "30px",
+    fontSize: "32px",
     fontWeight: "bold",
     color: "#146c94",
     marginBottom: "20px",
   },
   title: {
-    textAlign: "center",
     fontSize: "25px",
-    marginBottom: "12px",
+    marginBottom: "15px",
+    color: "#172033",
   },
   subtitle: {
+    color: "#475467",
+    fontSize: "15px",
+    lineHeight: "1.6",
+    marginBottom: "16px",
+  },
+  description: {
     color: "#667085",
     fontSize: "14px",
     lineHeight: "1.6",
-    textAlign: "center",
-    marginBottom: "30px",
-  },
-  label: {
-    display: "block",
-    fontWeight: 600,
-    fontSize: "14px",
-    marginBottom: "8px",
-  },
-  input: {
-    width: "100%",
-    padding: "13px",
-    marginBottom: "20px",
-    border: "1px solid #d0d5dd",
-    borderRadius: "8px",
-    fontSize: "15px",
-    boxSizing: "border-box",
-  },
-  error: {
-    padding: "12px",
-    marginBottom: "20px",
-    background: "#fff1f0",
-    color: "#b42318",
-    borderRadius: "8px",
-    fontSize: "13px",
+    marginBottom: "28px",
   },
   button: {
     width: "100%",
-    padding: "14px",
-    border: "none",
+    padding: "15px",
+    border: "1px solid #d0d5dd",
     borderRadius: "8px",
-    background: "#146c94",
-    color: "#ffffff",
+    backgroundColor: "#ffffff",
+    color: "#172033",
     fontSize: "16px",
     fontWeight: 600,
     cursor: "pointer",
   },
+  note: {
+    marginTop: "20px",
+    color: "#667085",
+    fontSize: "13px",
+  },
   footer: {
-    textAlign: "center",
     marginTop: "30px",
     color: "#98a2b3",
     fontSize: "12px",
